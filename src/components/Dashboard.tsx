@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, BarChart3, Phone, Clock, Users, Timer, TrendingUp } from 'lucide-react';
+import { Settings, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CallVolumeWidget from './widgets/CallVolumeWidget';
 import ASRWidget from './widgets/ASRWidget';
@@ -10,6 +10,9 @@ import HoldTimeWidget from './widgets/HoldTimeWidget';
 import QueueStatsWidget from './widgets/QueueStatsWidget';
 import RingTimeWidget from './widgets/RingTimeWidget';
 import ActivityFeedWidget from './widgets/ActivityFeedWidget';
+import SettingsModal from './SettingsModal';
+import { useMetrics, useSeatChannels } from '@/hooks/useCallStats';
+import { getApiConfig } from '@/services/api';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -17,6 +20,9 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
+  const { data: metrics, isLoading } = useMetrics();
+  const cfg = getApiConfig();
+  const { data: channelsData } = useSeatChannels(cfg?.seatId);
   
   const [layouts, setLayouts] = useState({
     lg: [
@@ -31,13 +37,13 @@ const Dashboard = () => {
   });
 
   const widgets = [
-    { id: 'call-volume', component: <CallVolumeWidget />, title: 'Call Volume' },
-    { id: 'asr', component: <ASRWidget />, title: 'Answer Success Rate' },
-    { id: 'call-duration', component: <CallDurationWidget />, title: 'Call Duration' },
-    { id: 'hold-time', component: <HoldTimeWidget />, title: 'Hold Time' },
-    { id: 'queue-stats', component: <QueueStatsWidget />, title: 'Queue Statistics' },
-    { id: 'ring-time', component: <RingTimeWidget />, title: 'Ring Time Analysis' },
-    { id: 'activity-feed', component: <ActivityFeedWidget />, title: 'Live Activity' },
+    { id: 'call-volume', component: <CallVolumeWidget metrics={metrics} isLoading={isLoading} />, title: 'Call Volume' },
+    { id: 'asr', component: <ASRWidget metrics={metrics} isLoading={isLoading} />, title: 'Answer Success Rate' },
+    { id: 'call-duration', component: <CallDurationWidget metrics={metrics} isLoading={isLoading} />, title: 'Call Duration' },
+    { id: 'hold-time', component: <HoldTimeWidget metrics={metrics} isLoading={isLoading} />, title: 'Hold Time' },
+    { id: 'queue-stats', component: <QueueStatsWidget metrics={metrics} isLoading={isLoading} />, title: 'Queue Statistics' },
+    { id: 'ring-time', component: <RingTimeWidget metrics={metrics} isLoading={isLoading} />, title: 'Ring Time Analysis' },
+    { id: 'activity-feed', component: <ActivityFeedWidget channels={channelsData?.channels} isLoading={isLoading} />, title: 'Live Activity' },
   ];
 
   const handleLayoutChange = (layout: any, layouts: any) => {
@@ -57,6 +63,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            <SettingsModal />
             <Button
               variant={isEditMode ? "default" : "outline"}
               onClick={() => setIsEditMode(!isEditMode)}

@@ -1,13 +1,36 @@
 
 import React from 'react';
 import { Phone, PhoneCall, PhoneMissed } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { MetricsResponse } from '@/services/api';
 
-const CallVolumeWidget = () => {
+interface CallVolumeWidgetProps {
+  metrics?: MetricsResponse | null;
+  isLoading?: boolean;
+}
+
+const CallVolumeWidget = ({ metrics, isLoading }: CallVolumeWidgetProps) => {
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col justify-between">
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="text-center space-y-2">
+              <Skeleton className="w-8 h-8 rounded-lg mx-auto bg-slate-700" />
+              <Skeleton className="h-6 w-12 mx-auto bg-slate-700" />
+              <Skeleton className="h-3 w-10 mx-auto bg-slate-700" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-4 w-32 mx-auto bg-slate-700" />
+      </div>
+    );
+  }
+
   const callData = {
-    total: 1247,
-    answered: 1098,
-    missed: 149,
-    growth: 12.5
+    total: metrics?.calls_total ?? 0,
+    answered: metrics?.answered_total ?? 0,
+    missed: metrics?.unanswered_total ?? 0,
   };
 
   return (
@@ -35,10 +58,9 @@ const CallVolumeWidget = () => {
           <div className="text-xs text-slate-400">Missed</div>
         </div>
       </div>
-      <div className="text-center">
-        <span className="text-green-400 text-sm font-medium">+{callData.growth}%</span>
-        <span className="text-slate-400 text-sm ml-1">vs last week</span>
-      </div>
+      {!metrics && (
+        <div className="text-center text-xs text-slate-500">Configure API to see live data</div>
+      )}
     </div>
   );
 };

@@ -2,16 +2,38 @@
 import React from 'react';
 import { Phone } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { MetricsResponse } from '@/services/api';
 
-const RingTimeWidget = () => {
+const formatSeconds = (s: number) => `${s.toFixed(1)}s`;
+
+interface RingTimeWidgetProps {
+  metrics?: MetricsResponse | null;
+  isLoading?: boolean;
+}
+
+const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col">
+        <Skeleton className="h-12 w-24 mx-auto mb-3 bg-slate-700" />
+        <Skeleton className="flex-1 bg-slate-700 rounded-full mx-auto w-32 h-32" />
+      </div>
+    );
+  }
+
   const ringData = [
-    { name: '0-10s', value: 45, color: '#10b981' },
-    { name: '10-20s', value: 35, color: '#3b82f6' },
-    { name: '20-30s', value: 15, color: '#f59e0b' },
-    { name: '30s+', value: 5, color: '#ef4444' },
-  ];
+    { name: 'Inbound', value: metrics?.average_ring_inbound ?? 0, color: '#10b981' },
+    { name: 'Outbound', value: metrics?.average_ring_outbound ?? 0, color: '#3b82f6' },
+    { name: 'Internal', value: metrics?.average_ring_internal ?? 0, color: '#f59e0b' },
+  ].filter(d => d.value > 0);
 
-  const avgRingTime = '12.3s';
+  // Fallback if all zero
+  if (ringData.length === 0) {
+    ringData.push({ name: 'No data', value: 1, color: '#334155' });
+  }
+
+  const avgRingTime = formatSeconds(metrics?.average_ring_total ?? 0);
 
   return (
     <div className="h-full flex flex-col">
@@ -44,18 +66,20 @@ const RingTimeWidget = () => {
                 border: '1px solid #334155',
                 borderRadius: '8px' 
               }}
+              formatter={(value: number) => [`${value}s`, '']}
             />
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-2 gap-1 text-xs">
-        {ringData.map((item, index) => (
+      <div className="grid grid-cols-3 gap-1 text-xs">
+        {[
+          { name: 'Inbound', color: '#10b981', value: metrics?.average_ring_inbound ?? 0 },
+          { name: 'Outbound', color: '#3b82f6', value: metrics?.average_ring_outbound ?? 0 },
+          { name: 'Internal', color: '#f59e0b', value: metrics?.average_ring_internal ?? 0 },
+        ].map((item, index) => (
           <div key={index} className="flex items-center space-x-1">
-            <div 
-              className="w-2 h-2 rounded-full" 
-              style={{ backgroundColor: item.color }}
-            />
-            <span className="text-slate-400">{item.name}: {item.value}%</span>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="text-slate-400">{item.name}: {item.value}s</span>
           </div>
         ))}
       </div>
