@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, Phone, Users } from 'lucide-react';
+import { Settings, Phone, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallVolumeWidget from './widgets/CallVolumeWidget';
@@ -11,50 +11,120 @@ import HoldTimeWidget from './widgets/HoldTimeWidget';
 import QueueStatsWidget from './widgets/QueueStatsWidget';
 import RingTimeWidget from './widgets/RingTimeWidget';
 import ActivityFeedWidget from './widgets/ActivityFeedWidget';
+import TalkTimeWidget from './widgets/TalkTimeWidget';
+import UnansweredCallsWidget from './widgets/UnansweredCallsWidget';
+import AbandonedCallsWidget from './widgets/AbandonedCallsWidget';
+import CallDistributionWidget from './widgets/CallDistributionWidget';
+import PresenceWidget from './widgets/PresenceWidget';
 import SettingsModal from './SettingsModal';
+import WidgetCatalog, { WIDGET_REGISTRY, loadActiveWidgets, saveActiveWidgets } from './WidgetCatalog';
 import { useMetrics, useChannels, useSeatChannels } from '@/hooks/useCallStats';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
+const LAYOUTS_STORAGE_KEY = 'dashboard-layouts';
+
+const loadLayouts = (activeIds: string[]): Record<string, any[]> => {
+  try {
+    const raw = localStorage.getItem(LAYOUTS_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // Filter out layout items for widgets that are no longer active
+      const filtered: Record<string, any[]> = {};
+      for (const [bp, items] of Object.entries(saved)) {
+        filtered[bp] = (items as any[]).filter((item: any) => activeIds.includes(item.i));
+      }
+      return filtered;
+    }
+  } catch {}
+  return {};
+};
+
 const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<string | undefined>(undefined);
-  
+  const [activeWidgetIds, setActiveWidgetIds] = useState<string[]>(loadActiveWidgets);
+
   const { data: metrics, isLoading } = useMetrics(selectedSeat);
   const { data: seatsList } = useChannels();
   const { data: channelsData } = useSeatChannels(selectedSeat);
-  
-  const [layouts, setLayouts] = useState({
-    lg: [
-      { i: 'call-volume', x: 0, y: 0, w: 3, h: 2 },
-      { i: 'asr', x: 3, y: 0, w: 3, h: 2 },
-      { i: 'call-duration', x: 6, y: 0, w: 3, h: 2 },
-      { i: 'hold-time', x: 9, y: 0, w: 3, h: 2 },
-      { i: 'queue-stats', x: 0, y: 2, w: 6, h: 3 },
-      { i: 'ring-time', x: 6, y: 2, w: 3, h: 3 },
-      { i: 'activity-feed', x: 9, y: 2, w: 3, h: 3 },
-    ]
+
+  const buildDefaultLayout = useCallback((ids: string[]) => {
+    let x = 0, y = 0;
+    return ids.map((id) => {
+      const reg = WIDGET_REGISTRY.find((w) => w.id === id);
+      const w = reg?.defaultW ?? 3;
+      const h = reg?.defaultH ?? 2;
+      if (x + w > 12) { x = 0; y += h; }
+      const item = { i: id, x, y, w, h };
+      x += w;
+      return item;
+    });
+  }, []);
+
+  const [layouts, setLayouts] = useState<Record<string, any[]>>(() => {
+    const saved = loadLayouts(activeWidgetIds);
+    if (saved.lg && saved.lg.length > 0) return saved;
+    return { lg: buildDefaultLayout(activeWidgetIds) };
   });
 
-  const widgets = [
-    { id: 'call-volume', component: <CallVolumeWidget metrics={metrics} isLoading={isLoading} />, title: 'Call Volume' },
-    { id: 'asr', component: <ASRWidget metrics={metrics} isLoading={isLoading} />, title: 'Answer Success Rate' },
-    { id: 'call-duration', component: <CallDurationWidget metrics={metrics} isLoading={isLoading} />, title: 'Call Duration' },
-    { id: 'hold-time', component: <HoldTimeWidget metrics={metrics} isLoading={isLoading} />, title: 'Hold Time' },
-    { id: 'queue-stats', component: <QueueStatsWidget metrics={metrics} isLoading={isLoading} />, title: 'Queue Statistics' },
-    { id: 'ring-time', component: <RingTimeWidget metrics={metrics} isLoading={isLoading} />, title: 'Ring Time Analysis' },
-    { id: 'activity-feed', component: <ActivityFeedWidget channels={channelsData?.channels} isLoading={isLoading} />, title: 'Live Activity' },
-  ];
-
-  const handleLayoutChange = (layout: any, layouts: any) => {
-    setLayouts(layouts);
+  const handleLayoutChange = (_layout: any, allLayouts: any) => {
+    setLayouts(allLayouts);
+    localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(allLayouts));
   };
 
   const handleSeatChange = (value: string) => {
     setSelectedSeat(value === 'all' ? undefined : value);
   };
+
+  const handleAddWidget = (id: string) => {
+    const newIds = [...activeWidgetIds, id];
+    setActiveWidgetIds(newIds);
+    saveActiveWidgets(newIds);
+
+    const reg = WIDGET_REGISTRY.find((w) => w.id === id)!;
+    const currentLg = layouts.lg || [];
+    const maxY = currentLg.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+    const newLayout = { i: id, x: 0, y: maxY, w: reg.defaultW, h: reg.defaultH };
+    const newLayouts = { ...layouts, lg: [...currentLg, newLayout] };
+    setLayouts(newLayouts);
+    localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(newLayouts));
+  };
+
+  const handleRemoveWidget = (id: string) => {
+    const newIds = activeWidgetIds.filter((wid) => wid !== id);
+    setActiveWidgetIds(newIds);
+    saveActiveWidgets(newIds);
+
+    const newLayouts: Record<string, any[]> = {};
+    for (const [bp, items] of Object.entries(layouts)) {
+      newLayouts[bp] = (items as any[]).filter((item: any) => item.i !== id);
+    }
+    setLayouts(newLayouts);
+    localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(newLayouts));
+  };
+
+  const renderWidget = (id: string) => {
+    switch (id) {
+      case 'call-volume': return <CallVolumeWidget metrics={metrics} isLoading={isLoading} />;
+      case 'asr': return <ASRWidget metrics={metrics} isLoading={isLoading} />;
+      case 'call-duration': return <CallDurationWidget metrics={metrics} isLoading={isLoading} />;
+      case 'hold-time': return <HoldTimeWidget metrics={metrics} isLoading={isLoading} />;
+      case 'queue-stats': return <QueueStatsWidget metrics={metrics} isLoading={isLoading} />;
+      case 'ring-time': return <RingTimeWidget metrics={metrics} isLoading={isLoading} />;
+      case 'activity-feed': return <ActivityFeedWidget channels={channelsData?.channels} isLoading={isLoading} />;
+      case 'talk-time': return <TalkTimeWidget metrics={metrics} isLoading={isLoading} />;
+      case 'unanswered-calls': return <UnansweredCallsWidget metrics={metrics} isLoading={isLoading} />;
+      case 'abandoned-calls': return <AbandonedCallsWidget metrics={metrics} isLoading={isLoading} />;
+      case 'call-distribution': return <CallDistributionWidget metrics={metrics} isLoading={isLoading} />;
+      case 'presence': return <PresenceWidget seatId={selectedSeat} isLoading={isLoading} />;
+      default: return null;
+    }
+  };
+
+  const getWidgetTitle = (id: string) => WIDGET_REGISTRY.find((w) => w.id === id)?.title ?? id;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -91,6 +161,13 @@ const Dashboard = () => {
                 </SelectContent>
               </Select>
             )}
+            {isEditMode && (
+              <WidgetCatalog
+                activeWidgetIds={activeWidgetIds}
+                onAddWidget={handleAddWidget}
+                selectedSeat={selectedSeat}
+              />
+            )}
             <SettingsModal />
             <Button
               variant={isEditMode ? "default" : "outline"}
@@ -118,28 +195,38 @@ const Dashboard = () => {
           containerPadding={[0, 0]}
           rowHeight={120}
         >
-          {widgets.map((widget) => (
+          {activeWidgetIds.map((id) => (
             <div
-              key={widget.id}
+              key={id}
               className={`bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden transition-all duration-200 ${
                 isEditMode ? 'ring-2 ring-blue-500/30 shadow-lg shadow-blue-500/10' : 'hover:shadow-lg hover:shadow-blue-500/5'
               }`}
             >
               <div className="h-full flex flex-col">
                 <div className="px-4 py-3 border-b border-slate-700/30 flex items-center justify-between">
-                  <h3 className="font-semibold text-white text-sm">{widget.title}</h3>
-                  {isEditMode && (
-                    <div className="w-6 h-6 bg-blue-500/20 rounded cursor-move flex items-center justify-center">
-                      <div className="grid grid-cols-2 gap-0.5">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="w-1 h-1 bg-blue-400 rounded-full" />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <h3 className="font-semibold text-white text-sm">{getWidgetTitle(id)}</h3>
+                  <div className="flex items-center gap-1">
+                    {isEditMode && (
+                      <>
+                        <button
+                          onClick={() => handleRemoveWidget(id)}
+                          className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center hover:bg-red-500/40 transition-colors"
+                        >
+                          <X className="w-3 h-3 text-red-400" />
+                        </button>
+                        <div className="w-6 h-6 bg-blue-500/20 rounded cursor-move flex items-center justify-center">
+                          <div className="grid grid-cols-2 gap-0.5">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i} className="w-1 h-1 bg-blue-400 rounded-full" />
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 p-4">
-                  {widget.component}
+                  {renderWidget(id)}
                 </div>
               </div>
             </div>

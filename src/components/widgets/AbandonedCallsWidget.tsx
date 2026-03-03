@@ -1,0 +1,78 @@
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { MetricsResponse } from '@/services/api';
+
+interface AbandonedCallsWidgetProps {
+  metrics?: MetricsResponse | null;
+  isLoading?: boolean;
+}
+
+const AbandonedCallsWidget = ({ metrics, isLoading }: AbandonedCallsWidgetProps) => {
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Skeleton className="w-24 h-24 rounded-full bg-slate-700" />
+      </div>
+    );
+  }
+
+  const segments = [
+    { label: 'Inbound', value: metrics?.abandoned_inbound ?? 0, color: '#f43f5e' },
+    { label: 'Outbound', value: metrics?.abandoned_outbound ?? 0, color: '#a855f7' },
+    { label: 'Internal', value: metrics?.abandoned_internal ?? 0, color: '#6366f1' },
+  ];
+
+  const total = metrics?.abandoned_total ?? 0;
+  const sum = segments.reduce((a, s) => a + s.value, 0) || 1;
+
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
+  return (
+    <div className="h-full flex items-center gap-4">
+      <div className="relative shrink-0">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          {segments.map((seg) => {
+            const dash = (seg.value / sum) * circumference;
+            const currentOffset = offset;
+            offset += dash;
+            return (
+              <circle
+                key={seg.label}
+                cx="50" cy="50" r={radius}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth="10"
+                strokeDasharray={`${dash} ${circumference - dash}`}
+                strokeDashoffset={-currentOffset}
+                transform="rotate(-90 50 50)"
+                className="transition-all duration-500"
+              />
+            );
+          })}
+          {total === 0 && (
+            <circle cx="50" cy="50" r={radius} fill="none" stroke="#334155" strokeWidth="10" />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-bold text-white">{total}</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {segments.map((seg) => (
+          <div key={seg.label} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
+            <span className="text-xs text-slate-400">{seg.label}</span>
+            <span className="text-xs font-semibold text-white ml-auto">{seg.value}</span>
+          </div>
+        ))}
+      </div>
+      {!metrics && (
+        <div className="text-xs text-slate-500">No data</div>
+      )}
+    </div>
+  );
+};
+
+export default AbandonedCallsWidget;
