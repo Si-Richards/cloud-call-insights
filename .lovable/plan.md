@@ -1,56 +1,55 @@
 
 
-## Plan: Integrate VoiceHost CSE API with Settings Modal
+## Plan: Add Widget Catalog with Additional Stat Widgets
 
-### API Overview
-
-The VoiceHost CSE API (Swagger 2.0, base path `/rest/v1`) exposes these endpoints:
-
-| Endpoint | Purpose | Key Data |
-|---|---|---|
-| `GET /about` | API health/version check | `cse_online`, version info |
-| `GET /channels` | List all seats | Array of seat IDs |
-| `GET /channels/{seat_id}` | Channels for a seat | Channel state, hold status, timestamps |
-| `GET /presence/{seat_id}` | Device presence | State, DND status |
-| `GET /metrics/{account_no}` | Account-level metrics | Calls, answered, unanswered, abandoned, avg duration/ring/talk/hold — all split by inbound/outbound/internal |
-| `GET /metrics/{account_no}/{seat_id}` | Seat-level metrics | Same fields as account metrics, per seat |
+### Current State
+7 fixed widgets on the dashboard. The API provides additional metrics not yet surfaced (talk time breakdown, unanswered/abandoned breakdowns, inbound vs outbound distribution, presence/DND status). Users cannot add or remove widgets.
 
 ### What We'll Build
 
-**1. API Configuration Settings Modal**
-- Gear icon in the dashboard header opens a dialog
-- Fields: API Base URL (defaulting to `https://callstats.voicehost.io/rest/v1`), Account Number, optional Seat ID
-- "Test Connection" button that hits `/about` to verify connectivity
-- Settings persisted to `localStorage`
+**1. Widget Catalog System**
+- An "Add Widget" button visible in edit mode that opens a dialog/popover
+- Shows available widgets that aren't already on the dashboard
+- Clicking a widget adds it to the grid layout
+- Remove button (X) on each widget in edit mode to remove it
+- Active widget list persisted to `localStorage`
 
-**2. API Client Service (`src/services/api.ts`)**
-- Typed API client with functions: `getAbout()`, `getChannels()`, `getChannelsBySeat(seatId)`, `getPresence(seatId)`, `getAccountMetrics(accountNo)`, `getSeatMetrics(accountNo, seatId)`
-- Full TypeScript interfaces for all response types
-- Reads base URL and account number from localStorage config
+**2. New Widgets (5 additional)**
 
-**3. React Query Hooks (`src/hooks/useCallStats.ts`)**
-- Custom hooks wrapping each API call with `@tanstack/react-query` for caching and auto-refresh
-- Configurable polling interval (e.g. 30s) for live data
-- Hooks: `useAccountMetrics()`, `useSeatMetrics(seatId)`, `useChannels()`, `usePresence(seatId)`
+| Widget | Data Source | Display |
+|---|---|---|
+| **Talk Time** | `average_talk_total/inbound/outbound/internal` | Bar chart with avg talk time breakdown |
+| **Unanswered Calls** | `unanswered_total/inbound/outbound/internal` | Donut chart with breakdown |
+| **Abandoned Calls** | `abandoned_total/inbound/outbound/internal` | Donut chart with breakdown |
+| **Call Distribution** | `calls_inbound/outbound/internal` | Pie chart showing inbound vs outbound vs internal ratio |
+| **Presence Status** | `/presence/{seat_id}` endpoint | State indicator + DND badge (only available when a seat is selected) |
 
-**4. Update All Widgets to Use Live Data**
-- **CallVolumeWidget**: `calls_total`, `answered_total`, `unanswered_total` from account metrics
-- **ASRWidget**: Compute ASR as `answered_total / calls_total * 100`
-- **CallDurationWidget**: `average_duration_total` (with inbound/outbound/internal breakdown)
-- **HoldTimeWidget**: `average_hold_total` (with breakdown)
-- **QueueStatsWidget**: `abandoned_total`, `unanswered_total`, channel data from `/channels`
-- **RingTimeWidget**: `average_ring_total` (with breakdown)
-- **ActivityFeedWidget**: Use `/channels` data for live channel activity
-
-Each widget will show a loading skeleton while fetching, and gracefully fall back to "No data — configure API" state when not configured.
-
-### Files to Create/Modify
+**3. Files to Create/Modify**
 
 | File | Action |
 |---|---|
-| `src/services/api.ts` | **Create** — API client + TypeScript types |
-| `src/hooks/useCallStats.ts` | **Create** — React Query hooks |
-| `src/components/SettingsModal.tsx` | **Create** — Settings dialog with URL, account no, test connection |
-| `src/components/Dashboard.tsx` | **Modify** — Add settings button, pass data to widgets |
-| `src/components/widgets/*.tsx` (all 7) | **Modify** — Replace hardcoded data with hook data, add loading/empty states |
+| `src/components/widgets/TalkTimeWidget.tsx` | **Create** |
+| `src/components/widgets/UnansweredCallsWidget.tsx` | **Create** |
+| `src/components/widgets/AbandonedCallsWidget.tsx` | **Create** |
+| `src/components/widgets/CallDistributionWidget.tsx` | **Create** |
+| `src/components/widgets/PresenceWidget.tsx` | **Create** |
+| `src/components/WidgetCatalog.tsx` | **Create** — Dialog listing all available widgets with add button |
+| `src/components/Dashboard.tsx` | **Modify** — Dynamic widget list from registry, add/remove logic, localStorage persistence, "Add Widget" button in edit mode |
+| `src/hooks/useCallStats.ts` | **Modify** — Add `usePresence` export if not already used |
+
+**4. Widget Registry Pattern**
+A central registry mapping widget IDs to their component, title, default size, and description. The dashboard reads active widget IDs from state, renders only those, and the catalog shows the remaining ones as available to add.
+
+```text
+WIDGET_REGISTRY = {
+  'call-volume':       { component, title, defaultW: 3, defaultH: 2 },
+  'asr':               { ... },
+  'talk-time':         { ... },  // NEW
+  'unanswered-calls':  { ... },  // NEW
+  ...
+}
+
+activeWidgets (localStorage) = ['call-volume', 'asr', 'call-duration', ...]
+catalog shows = REGISTRY keys - activeWidgets
+```
 
