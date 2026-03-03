@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, Phone } from 'lucide-react';
+import { Settings, Phone, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallVolumeWidget from './widgets/CallVolumeWidget';
 import ASRWidget from './widgets/ASRWidget';
 import CallDurationWidget from './widgets/CallDurationWidget';
@@ -11,8 +12,7 @@ import QueueStatsWidget from './widgets/QueueStatsWidget';
 import RingTimeWidget from './widgets/RingTimeWidget';
 import ActivityFeedWidget from './widgets/ActivityFeedWidget';
 import SettingsModal from './SettingsModal';
-import { useMetrics, useSeatChannels } from '@/hooks/useCallStats';
-import { getApiConfig } from '@/services/api';
+import { useMetrics, useChannels, useSeatChannels } from '@/hooks/useCallStats';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -20,9 +20,11 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
-  const { data: metrics, isLoading } = useMetrics();
-  const cfg = getApiConfig();
-  const { data: channelsData } = useSeatChannels(cfg?.seatId);
+  const [selectedSeat, setSelectedSeat] = useState<string | undefined>(undefined);
+  
+  const { data: metrics, isLoading } = useMetrics(selectedSeat);
+  const { data: seatsList } = useChannels();
+  const { data: channelsData } = useSeatChannels(selectedSeat);
   
   const [layouts, setLayouts] = useState({
     lg: [
@@ -50,6 +52,10 @@ const Dashboard = () => {
     setLayouts(layouts);
   };
 
+  const handleSeatChange = (value: string) => {
+    setSelectedSeat(value === 'all' ? undefined : value);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -63,6 +69,28 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            {seatsList?.seats && seatsList.seats.length > 0 && (
+              <Select value={selectedSeat ?? 'all'} onValueChange={handleSeatChange}>
+                <SelectTrigger className="w-48 bg-slate-700/50 border-slate-600 text-slate-200">
+                  <Users className="h-4 w-4 mr-2 text-slate-400" />
+                  <SelectValue placeholder="All Seats" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectItem value="all" className="text-slate-200 focus:bg-slate-700 focus:text-white">
+                    All Seats (Account)
+                  </SelectItem>
+                  {seatsList.seats.map((seat) => (
+                    <SelectItem
+                      key={seat.id}
+                      value={seat.id}
+                      className="text-slate-200 focus:bg-slate-700 focus:text-white"
+                    >
+                      Seat {seat.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <SettingsModal />
             <Button
               variant={isEditMode ? "default" : "outline"}
