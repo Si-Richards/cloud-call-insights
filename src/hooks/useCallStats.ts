@@ -68,13 +68,12 @@ export const usePresence = (seatId?: string) =>
     refetchInterval: POLL_INTERVAL,
   });
 
-export const useMetrics = () => {
-  const cfg = getApiConfig();
+export const useMetrics = (seatId?: string) => {
   const accountMetrics = useAccountMetrics();
-  const seatMetrics = useSeatMetrics(cfg?.seatId);
+  const seatMetrics = useSeatMetrics(seatId);
 
-  // If a seat ID is configured, prefer seat metrics; otherwise use account metrics
-  const metrics = cfg?.seatId ? seatMetrics : accountMetrics;
+  // If a seat ID is provided, prefer seat metrics; otherwise use account metrics
+  const metrics = seatId ? seatMetrics : accountMetrics;
 
   return metrics;
 };
