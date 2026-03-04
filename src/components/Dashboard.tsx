@@ -1,8 +1,9 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, Phone, Users, X, AlertCircle } from 'lucide-react';
+import { Settings, Users, X, AlertCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallVolumeWidget from './widgets/CallVolumeWidget';
 import ASRWidget from './widgets/ASRWidget';
@@ -27,13 +28,13 @@ import 'react-resizable/css/styles.css';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const LAYOUTS_STORAGE_KEY = 'dashboard-layouts';
+const TITLE_STORAGE_KEY = 'dashboard-title';
 
 const loadLayouts = (activeIds: string[]): Record<string, any[]> => {
   try {
     const raw = localStorage.getItem(LAYOUTS_STORAGE_KEY);
     if (raw) {
       const saved = JSON.parse(raw);
-      // Filter out layout items for widgets that are no longer active
       const filtered: Record<string, any[]> = {};
       for (const [bp, items] of Object.entries(saved)) {
         filtered[bp] = (items as any[]).filter((item: any) => activeIds.includes(item.i));
@@ -48,6 +49,25 @@ const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<string | undefined>(undefined);
   const [activeWidgetIds, setActiveWidgetIds] = useState<string[]>(loadActiveWidgets);
+
+  // Editable title
+  const [title, setTitle] = useState(() => localStorage.getItem(TITLE_STORAGE_KEY) || 'Dashboard');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
+  const saveTitle = (newTitle: string) => {
+    const trimmed = newTitle.trim() || 'Dashboard';
+    setTitle(trimmed);
+    localStorage.setItem(TITLE_STORAGE_KEY, trimmed);
+    setIsEditingTitle(false);
+  };
 
   const apiConfigured = !!getApiConfig();
   const { data: metrics, isLoading } = useMetrics(selectedSeat);
@@ -86,10 +106,9 @@ const Dashboard = () => {
     const newIds = [...activeWidgetIds, id];
     setActiveWidgetIds(newIds);
     saveActiveWidgets(newIds);
-
     const reg = WIDGET_REGISTRY.find((w) => w.id === id)!;
     const currentLg = layouts.lg || [];
-    const maxY = currentLg.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+    const maxY = currentLg.reduce((max: number, item: any) => Math.max(max, item.y + item.h), 0);
     const newLayout = { i: id, x: 0, y: maxY, w: reg.defaultW, h: reg.defaultH };
     const newLayouts = { ...layouts, lg: [...currentLg, newLayout] };
     setLayouts(newLayouts);
@@ -100,7 +119,6 @@ const Dashboard = () => {
     const newIds = activeWidgetIds.filter((wid) => wid !== id);
     setActiveWidgetIds(newIds);
     saveActiveWidgets(newIds);
-
     const newLayouts: Record<string, any[]> = {};
     for (const [bp, items] of Object.entries(layouts)) {
       newLayouts[bp] = (items as any[]).filter((item: any) => item.i !== id);
@@ -135,36 +153,50 @@ const Dashboard = () => {
       <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Phone className="h-8 w-8 text-blue-400" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">Call Statistics Portal</h1>
-              <p className="text-slate-400">Cloud PBX Analytics Dashboard</p>
-            </div>
+            {isEditingTitle ? (
+              <Input
+                ref={titleInputRef}
+                defaultValue={title}
+                onBlur={(e) => saveTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveTitle((e.target as HTMLInputElement).value);
+                  if (e.key === 'Escape') setIsEditingTitle(false);
+                }}
+                className="text-2xl font-bold bg-slate-700/50 border-slate-600 text-white h-10 w-64"
+              />
+            ) : (
+              <button
+                onClick={() => setIsEditingTitle(true)}
+                className="flex items-center gap-2 group"
+              >
+                <h1 className="text-2xl font-bold text-white">{title}</h1>
+                <Pencil className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            )}
             <ConnectionStatus />
           </div>
           <div className="flex items-center space-x-3">
-            {seatsList?.seats && seatsList.seats.length > 0 && (
-              <Select value={selectedSeat ?? 'all'} onValueChange={handleSeatChange}>
-                <SelectTrigger className="w-48 bg-slate-700/50 border-slate-600 text-slate-200">
-                  <Users className="h-4 w-4 mr-2 text-slate-400" />
-                  <SelectValue placeholder="All Seats" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="all" className="text-slate-200 focus:bg-slate-700 focus:text-white">
-                    All Seats (Account)
+            {/* Seat selector - always visible */}
+            <Select value={selectedSeat ?? 'all'} onValueChange={handleSeatChange}>
+              <SelectTrigger className="w-48 bg-slate-700/50 border-slate-600 text-slate-200">
+                <Users className="h-4 w-4 mr-2 text-slate-400" />
+                <SelectValue placeholder="All Seats" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-200 focus:bg-slate-700 focus:text-white">
+                  All Seats (Account)
+                </SelectItem>
+                {seatsList?.seats?.map((seat) => (
+                  <SelectItem
+                    key={seat.id}
+                    value={seat.id}
+                    className="text-slate-200 focus:bg-slate-700 focus:text-white"
+                  >
+                    Seat {seat.id}
                   </SelectItem>
-                  {seatsList.seats.map((seat) => (
-                    <SelectItem
-                      key={seat.id}
-                      value={seat.id}
-                      className="text-slate-200 focus:bg-slate-700 focus:text-white"
-                    >
-                      Seat {seat.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+                ))}
+              </SelectContent>
+            </Select>
             {isEditMode && (
               <WidgetCatalog
                 activeWidgetIds={activeWidgetIds}
@@ -223,7 +255,7 @@ const Dashboard = () => {
               }`}
             >
               <div className="h-full flex flex-col">
-                <div className="px-4 py-3 border-b border-slate-700/30 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-slate-700/30 flex items-center justify-between shrink-0">
                   <h3 className="font-semibold text-white text-sm">{getWidgetTitle(id)}</h3>
                   <div className="flex items-center gap-1">
                     {isEditMode && (
@@ -245,7 +277,7 @@ const Dashboard = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex-1 p-4">
+                <div className="flex-1 p-4 overflow-hidden min-h-0">
                   {renderWidget(id)}
                 </div>
               </div>

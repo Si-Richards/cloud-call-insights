@@ -26,8 +26,8 @@ const PresenceWidget = ({ seatId, isLoading: parentLoading }: PresenceWidgetProp
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <User className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">Select a seat to view presence</p>
+          <User className="h-[clamp(1.5rem,5vw,2.5rem)] w-[clamp(1.5rem,5vw,2.5rem)] text-slate-600 mx-auto mb-2" />
+          <p className="text-[clamp(0.65rem,1.5vw,0.875rem)] text-slate-500">Select a seat to view presence</p>
         </div>
       </div>
     );
@@ -47,14 +47,14 @@ const PresenceWidget = ({ seatId, isLoading: parentLoading }: PresenceWidgetProp
   return (
     <div className="h-full flex flex-col items-center justify-center gap-3">
       <div className="relative">
-        <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center">
-          <User className="h-8 w-8 text-slate-300" />
+        <div className="w-[clamp(3rem,8vw,4.5rem)] h-[clamp(3rem,8vw,4.5rem)] rounded-full bg-slate-700/50 flex items-center justify-center">
+          <User className="h-[clamp(1.5rem,4vw,2.5rem)] w-[clamp(1.5rem,4vw,2.5rem)] text-slate-300" />
         </div>
-        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-slate-800 ${stateInfo.color}`} />
+        <div className={`absolute -bottom-1 -right-1 w-[clamp(1rem,2.5vw,1.5rem)] h-[clamp(1rem,2.5vw,1.5rem)] rounded-full border-2 border-slate-800 ${stateInfo.color}`} />
       </div>
       <div className="text-center">
-        <div className="text-sm font-semibold text-white">Seat {seatId}</div>
-        <div className="text-xs text-slate-400 mt-0.5">{stateInfo.label}</div>
+        <div className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-semibold text-white">Seat {seatId}</div>
+        <div className="text-[clamp(0.6rem,1.2vw,0.75rem)] text-slate-400 mt-0.5">{stateInfo.label}</div>
       </div>
       {presence?.dnd && (
         <Badge variant="destructive" className="text-xs gap-1">

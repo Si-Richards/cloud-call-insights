@@ -25,10 +25,10 @@ const TalkTimeWidget = ({ metrics, isLoading }: TalkTimeWidgetProps) => {
   }
 
   const data = [
-    { label: 'Total', value: metrics?.average_talk_total ?? 0, color: 'bg-purple-500/20 text-purple-400' },
-    { label: 'Inbound', value: metrics?.average_talk_inbound ?? 0, color: 'bg-blue-500/20 text-blue-400' },
+    { label: 'Total', value: metrics?.average_talk_total ?? 0, color: 'bg-green-500/20 text-green-400' },
+    { label: 'Inbound', value: metrics?.average_talk_inbound ?? 0, color: 'bg-green-500/20 text-green-400' },
     { label: 'Outbound', value: metrics?.average_talk_outbound ?? 0, color: 'bg-green-500/20 text-green-400' },
-    { label: 'Internal', value: metrics?.average_talk_internal ?? 0, color: 'bg-amber-500/20 text-amber-400' },
+    { label: 'Internal', value: metrics?.average_talk_internal ?? 0, color: 'bg-green-500/20 text-green-400' },
   ];
 
   const maxVal = Math.max(...data.map(d => d.value), 1);
@@ -37,14 +37,14 @@ const TalkTimeWidget = ({ metrics, isLoading }: TalkTimeWidgetProps) => {
     <div className="h-full flex flex-col justify-between gap-2">
       {data.map((item) => (
         <div key={item.label} className="flex items-center gap-3">
-          <div className="w-16 text-xs text-slate-400 shrink-0">{item.label}</div>
-          <div className="flex-1 h-5 bg-slate-700/50 rounded-full overflow-hidden">
+          <div className="w-[clamp(2.5rem,6vw,4rem)] text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400 shrink-0">{item.label}</div>
+          <div className="flex-1 h-[clamp(1rem,3vw,1.5rem)] bg-slate-700/50 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${item.color.split(' ')[0]} transition-all duration-500`}
               style={{ width: `${Math.max((item.value / maxVal) * 100, 2)}%` }}
             />
           </div>
-          <div className="text-sm font-semibold text-white w-16 text-right">{formatDuration(item.value)}</div>
+          <div className="text-[clamp(0.65rem,1.5vw,0.875rem)] font-semibold text-white w-[clamp(2.5rem,6vw,4rem)] text-right">{formatDuration(item.value)}</div>
         </div>
       ))}
       {!metrics && (

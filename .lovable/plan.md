@@ -1,53 +1,34 @@
 
 
-## Plan: Dashboard Header, Widget Scaling, and Threshold-Based Icon Colors
+## Plan: Dashboard Polish and UX Improvements
 
-### 1. Custom Dashboard Title
-- Remove the hardcoded Phone icon, "Call Statistics Portal" title, and subtitle from the header
-- Add an editable title: clicking it (or an edit icon) lets the user type a custom name
-- Persist the custom title in `localStorage`
-- Default to "Dashboard" if unset
+After reviewing all widgets and the dashboard, here are the improvements worth making:
 
-### 2. Seat Selector Already Exists — Improvements
-The seat dropdown already exists in the header but only shows when seats are loaded. No changes needed to add it — it's already there. Will ensure it remains prominent and functional.
+### 1. Connection Status Indicator
+Add a small status badge in the header showing whether the API is connected and when data was last refreshed. Currently there's no visual feedback unless you open the settings modal.
 
-### 3. Widget Content Scaling
-Currently widget content uses fixed sizes (`text-2xl`, `w-8 h-8`, etc.) that don't adapt when widgets are resized. Fix by:
-- Making all widgets use `h-full` with flex layouts and `ResponsiveContainer` for charts (already done for chart widgets)
-- For stat/number widgets (CallVolume, ASR, HoldTime, QueueStats, Presence, TalkTime, Unanswered, Abandoned): replace fixed text sizes with responsive sizing using CSS `clamp()` or container-relative units
-- Use `overflow-hidden` and flex-based layouts so content adapts to any widget size
+### 2. Auto-refresh Countdown & Last Updated Timestamp
+Show "Last updated: 12s ago" near the header so users know the data is live. Optionally show a subtle refresh indicator when polling fires.
 
-### 4. Green Icons with Threshold Breach Colors
-- Default all widget icons to green (healthy state)
-- Add a threshold configuration system: store thresholds per widget in `localStorage`
-- When a metric breaches its threshold, the icon color changes to amber (warning) or red (critical)
-- Initial thresholds (configurable later):
-  - ASR: green if >= 90%, amber < 90%, red < 70%
-  - Abandoned calls: green if 0, amber > 0, red > 5
-  - Hold time: green < 30s, amber < 60s, red >= 60s
-  - Unanswered: green if 0, amber > 0, red > 10
+### 3. "No Data" Empty State Improvement
+When the API isn't configured, currently each widget shows its own variant of "no data." Instead, show a single prominent banner/overlay encouraging the user to configure the API, rather than 7+ individual messages.
+
+### 4. Configurable Polling Interval
+Add a dropdown in the Settings Modal to let users choose refresh rate (10s, 30s, 60s, 2min). Store in localStorage alongside the API config.
+
+### 5. Widget Tooltip Improvements
+Several chart widgets (Call Duration, Hold Time, Talk Time, Ring Time) use Recharts tooltips with inconsistent styling. Standardize tooltip format and ensure all show proper units.
+
+### 6. Dark Mode Refinements
+- The "Edit Layout" button always shows blue styling even when not in edit mode — make it properly outlined when inactive
+- Improve contrast on some subtle text elements
 
 ### Files to Modify
 
 | File | Changes |
 |---|---|
-| `src/components/Dashboard.tsx` | Remove hardcoded title/icon, add editable title with localStorage persistence, pass threshold status to widget rendering |
-| `src/components/widgets/CallVolumeWidget.tsx` | Responsive text sizing, green default icons |
-| `src/components/widgets/ASRWidget.tsx` | Responsive sizing, green icon with threshold color |
-| `src/components/widgets/CallDurationWidget.tsx` | Responsive sizing, green icon |
-| `src/components/widgets/HoldTimeWidget.tsx` | Responsive sizing, green icon with threshold color |
-| `src/components/widgets/QueueStatsWidget.tsx` | Responsive sizing, green icons with threshold colors |
-| `src/components/widgets/RingTimeWidget.tsx` | Responsive sizing, green icon |
-| `src/components/widgets/TalkTimeWidget.tsx` | Responsive sizing, green icon |
-| `src/components/widgets/UnansweredCallsWidget.tsx` | Responsive sizing, green icon with threshold color |
-| `src/components/widgets/AbandonedCallsWidget.tsx` | Responsive sizing, green icon with threshold color |
-| `src/components/widgets/CallDistributionWidget.tsx` | Responsive sizing, green icon |
-| `src/components/widgets/PresenceWidget.tsx` | Responsive sizing |
-| `src/components/WidgetCatalog.tsx` | Update registry icons to green |
-
-### Approach for Responsive Scaling
-- Wrap widget content in flex containers that fill available space
-- Use Tailwind's `text-[clamp(...)]` or relative sizing for key numbers
-- Charts already use `ResponsiveContainer` so they scale automatically
-- For stat widgets, use `min-w-0` and `truncate` to prevent overflow at small sizes
+| `src/components/Dashboard.tsx` | Add connection status indicator, last-updated timestamp, improve edit button styling, add unconfigured banner |
+| `src/components/SettingsModal.tsx` | Add polling interval selector |
+| `src/hooks/useCallStats.ts` | Read polling interval from config |
+| `src/services/api.ts` | Add `pollInterval` to `ApiConfig` type |
 

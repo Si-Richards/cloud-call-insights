@@ -17,9 +17,9 @@ const CallDistributionWidget = ({ metrics, isLoading }: CallDistributionWidgetPr
   }
 
   const segments = [
-    { label: 'Inbound', value: metrics?.calls_inbound ?? 0, color: '#3b82f6' },
-    { label: 'Outbound', value: metrics?.calls_outbound ?? 0, color: '#22c55e' },
-    { label: 'Internal', value: metrics?.calls_internal ?? 0, color: '#f59e0b' },
+    { label: 'Inbound', value: metrics?.calls_inbound ?? 0, color: '#22c55e' },
+    { label: 'Outbound', value: metrics?.calls_outbound ?? 0, color: '#4ade80' },
+    { label: 'Internal', value: metrics?.calls_internal ?? 0, color: '#86efac' },
   ];
 
   const total = metrics?.calls_total ?? 0;
@@ -31,8 +31,8 @@ const CallDistributionWidget = ({ metrics, isLoading }: CallDistributionWidgetPr
 
   return (
     <div className="h-full flex items-center gap-4">
-      <div className="relative shrink-0">
-        <svg width="100" height="100" viewBox="0 0 100 100">
+      <div className="relative shrink-0" style={{ width: 'clamp(60px, 30%, 100px)', aspectRatio: '1' }}>
+        <svg width="100%" height="100%" viewBox="0 0 100 100">
           {segments.map((seg) => {
             const dash = (seg.value / sum) * circumference;
             const currentOffset = offset;
@@ -56,17 +56,17 @@ const CallDistributionWidget = ({ metrics, isLoading }: CallDistributionWidgetPr
           )}
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold text-white">{total}</span>
+          <span className="text-[clamp(0.875rem,2.5vw,1.25rem)] font-bold text-white">{total}</span>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 min-w-0">
         {segments.map((seg) => {
           const pct = total > 0 ? Math.round((seg.value / total) * 100) : 0;
           return (
             <div key={seg.label} className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-              <span className="text-xs text-slate-400">{seg.label}</span>
-              <span className="text-xs font-semibold text-white ml-auto">{seg.value} ({pct}%)</span>
+              <span className="text-[clamp(0.6rem,1.2vw,0.75rem)] text-slate-400">{seg.label}</span>
+              <span className="text-[clamp(0.6rem,1.2vw,0.75rem)] font-semibold text-white ml-auto">{seg.value} ({pct}%)</span>
             </div>
           );
         })}
