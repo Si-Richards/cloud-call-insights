@@ -1,14 +1,8 @@
-
 import React from 'react';
 import { Timer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatDuration } from '@/lib/formatTime';
 import type { MetricsResponse } from '@/services/api';
-
-const formatSeconds = (s: number) => {
-  const mins = Math.floor(s / 60);
-  const secs = s % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-};
 
 interface HoldTimeWidgetProps {
   metrics?: MetricsResponse | null;
@@ -33,8 +27,8 @@ const HoldTimeWidget = ({ metrics, isLoading }: HoldTimeWidgetProps) => {
     );
   }
 
-  const avgHold = formatSeconds(metrics?.average_hold_total ?? 0);
-  const avgTalk = formatSeconds(metrics?.average_talk_total ?? 0);
+  const avgHold = formatDuration(metrics?.average_hold_total ?? 0);
+  const avgTalk = formatDuration(metrics?.average_talk_total ?? 0);
   const abandoned = metrics?.abandoned_total ?? 0;
 
   return (

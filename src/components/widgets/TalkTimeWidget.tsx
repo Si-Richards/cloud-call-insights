@@ -1,19 +1,12 @@
 import React from 'react';
-import { MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatDuration } from '@/lib/formatTime';
 import type { MetricsResponse } from '@/services/api';
 
 interface TalkTimeWidgetProps {
   metrics?: MetricsResponse | null;
   isLoading?: boolean;
 }
-
-const formatSeconds = (s: number) => {
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return sec > 0 ? `${m}m ${sec}s` : `${m}m`;
-};
 
 const TalkTimeWidget = ({ metrics, isLoading }: TalkTimeWidgetProps) => {
   if (isLoading) {
@@ -51,7 +44,7 @@ const TalkTimeWidget = ({ metrics, isLoading }: TalkTimeWidgetProps) => {
               style={{ width: `${Math.max((item.value / maxVal) * 100, 2)}%` }}
             />
           </div>
-          <div className="text-sm font-semibold text-white w-14 text-right">{formatSeconds(item.value)}</div>
+          <div className="text-sm font-semibold text-white w-16 text-right">{formatDuration(item.value)}</div>
         </div>
       ))}
       {!metrics && (

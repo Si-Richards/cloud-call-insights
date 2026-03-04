@@ -1,15 +1,9 @@
-
 import React from 'react';
 import { Clock } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatDuration, formatDurationCompact } from '@/lib/formatTime';
 import type { MetricsResponse } from '@/services/api';
-
-const formatSeconds = (s: number) => {
-  const mins = Math.floor(s / 60);
-  const secs = s % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-};
 
 interface CallDurationWidgetProps {
   metrics?: MetricsResponse | null;
@@ -27,12 +21,12 @@ const CallDurationWidget = ({ metrics, isLoading }: CallDurationWidgetProps) => 
   }
 
   const durationData = [
-    { range: 'Inbound', calls: metrics?.average_duration_inbound ?? 0 },
-    { range: 'Outbound', calls: metrics?.average_duration_outbound ?? 0 },
-    { range: 'Internal', calls: metrics?.average_duration_internal ?? 0 },
+    { range: 'Inbound', seconds: metrics?.average_duration_inbound ?? 0 },
+    { range: 'Outbound', seconds: metrics?.average_duration_outbound ?? 0 },
+    { range: 'Internal', seconds: metrics?.average_duration_internal ?? 0 },
   ];
 
-  const avgDuration = formatSeconds(metrics?.average_duration_total ?? 0);
+  const avgDuration = formatDuration(metrics?.average_duration_total ?? 0);
 
   return (
     <div className="h-full flex flex-col">
@@ -51,9 +45,23 @@ const CallDurationWidget = ({ metrics, isLoading }: CallDurationWidgetProps) => 
               axisLine={false}
               tickLine={false}
             />
-            <YAxis hide />
+            <YAxis 
+              tick={{ fill: '#94a3b8', fontSize: 9 }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+              tickFormatter={(v: number) => formatDurationCompact(v)}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: '8px',
+              }}
+              formatter={(value: number) => [formatDuration(value), 'Avg Duration']}
+            />
             <Bar 
-              dataKey="calls" 
+              dataKey="seconds" 
               fill="#3b82f6" 
               radius={[2, 2, 0, 0]}
               opacity={0.8}

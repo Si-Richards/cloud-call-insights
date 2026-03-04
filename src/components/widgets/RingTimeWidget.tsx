@@ -1,11 +1,9 @@
-
 import React from 'react';
 import { Phone } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatDuration } from '@/lib/formatTime';
 import type { MetricsResponse } from '@/services/api';
-
-const formatSeconds = (s: number) => `${s.toFixed(1)}s`;
 
 interface RingTimeWidgetProps {
   metrics?: MetricsResponse | null;
@@ -28,12 +26,11 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
     { name: 'Internal', value: metrics?.average_ring_internal ?? 0, color: '#f59e0b' },
   ].filter(d => d.value > 0);
 
-  // Fallback if all zero
   if (ringData.length === 0) {
     ringData.push({ name: 'No data', value: 1, color: '#334155' });
   }
 
-  const avgRingTime = formatSeconds(metrics?.average_ring_total ?? 0);
+  const avgRingTime = formatDuration(metrics?.average_ring_total ?? 0);
 
   return (
     <div className="h-full flex flex-col">
@@ -66,7 +63,7 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
                 border: '1px solid #334155',
                 borderRadius: '8px' 
               }}
-              formatter={(value: number) => [`${value}s`, '']}
+              formatter={(value: number) => [formatDuration(value), '']}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -79,7 +76,7 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
         ].map((item, index) => (
           <div key={index} className="flex items-center space-x-1">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="text-slate-400">{item.name}: {item.value}s</span>
+            <span className="text-slate-400">{item.name}: {formatDuration(item.value)}</span>
           </div>
         ))}
       </div>
