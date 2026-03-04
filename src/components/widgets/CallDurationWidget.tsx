@@ -57,7 +57,10 @@ const CallDurationWidget = ({ metrics, isLoading }: CallDurationWidgetProps) => 
                 backgroundColor: '#1e293b',
                 border: '1px solid #334155',
                 borderRadius: '8px',
+                color: '#e2e8f0',
+                fontSize: '12px',
               }}
+              labelStyle={{ color: '#94a3b8' }}
               formatter={(value: number) => [formatDuration(value), 'Avg Duration']}
             />
             <Bar 

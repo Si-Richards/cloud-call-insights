@@ -61,9 +61,12 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
               contentStyle={{ 
                 backgroundColor: '#1e293b', 
                 border: '1px solid #334155',
-                borderRadius: '8px' 
+                borderRadius: '8px',
+                color: '#e2e8f0',
+                fontSize: '12px',
               }}
-              formatter={(value: number) => [formatDuration(value), '']}
+              labelStyle={{ color: '#94a3b8' }}
+              formatter={(value: number) => [formatDuration(value), 'Ring Time']}
             />
           </PieChart>
         </ResponsiveContainer>

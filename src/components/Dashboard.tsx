@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, Phone, Users, X } from 'lucide-react';
+import { Settings, Phone, Users, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallVolumeWidget from './widgets/CallVolumeWidget';
@@ -17,8 +17,10 @@ import AbandonedCallsWidget from './widgets/AbandonedCallsWidget';
 import CallDistributionWidget from './widgets/CallDistributionWidget';
 import PresenceWidget from './widgets/PresenceWidget';
 import SettingsModal from './SettingsModal';
+import ConnectionStatus from './ConnectionStatus';
 import WidgetCatalog, { WIDGET_REGISTRY, loadActiveWidgets, saveActiveWidgets } from './WidgetCatalog';
 import { useMetrics, useChannels, useSeatChannels } from '@/hooks/useCallStats';
+import { getApiConfig } from '@/services/api';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -47,6 +49,7 @@ const Dashboard = () => {
   const [selectedSeat, setSelectedSeat] = useState<string | undefined>(undefined);
   const [activeWidgetIds, setActiveWidgetIds] = useState<string[]>(loadActiveWidgets);
 
+  const apiConfigured = !!getApiConfig();
   const { data: metrics, isLoading } = useMetrics(selectedSeat);
   const { data: seatsList } = useChannels();
   const { data: channelsData } = useSeatChannels(selectedSeat);
@@ -137,6 +140,7 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold text-white">Call Statistics Portal</h1>
               <p className="text-slate-400">Cloud PBX Analytics Dashboard</p>
             </div>
+            <ConnectionStatus />
           </div>
           <div className="flex items-center space-x-3">
             {seatsList?.seats && seatsList.seats.length > 0 && (
@@ -172,7 +176,10 @@ const Dashboard = () => {
             <Button
               variant={isEditMode ? "default" : "outline"}
               onClick={() => setIsEditMode(!isEditMode)}
-              className="bg-blue-600 hover:bg-blue-700 border-blue-500"
+              className={isEditMode
+                ? "bg-blue-600 hover:bg-blue-700 border-blue-500"
+                : "border-slate-600 bg-slate-700/50 hover:bg-slate-700 text-slate-200"
+              }
             >
               <Settings className="h-4 w-4 mr-2" />
               {isEditMode ? 'Save Layout' : 'Edit Layout'}
@@ -180,6 +187,19 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Unconfigured Banner */}
+      {!apiConfigured && (
+        <div className="mx-6 mt-6 p-6 rounded-xl bg-slate-800/80 border border-slate-700/50 flex flex-col items-center text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+            <AlertCircle className="h-6 w-6 text-blue-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-white">Connect to your PBX</h2>
+          <p className="text-slate-400 text-sm max-w-md">
+            Click <strong>API Settings</strong> to enter your CSE API URL and account number. Once connected, your widgets will display live call statistics.
+          </p>
+        </div>
+      )}
 
       {/* Dashboard Grid */}
       <div className="p-6">
