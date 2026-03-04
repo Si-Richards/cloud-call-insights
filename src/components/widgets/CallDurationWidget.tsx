@@ -30,13 +30,13 @@ const CallDurationWidget = ({ metrics, isLoading }: CallDurationWidgetProps) => 
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center space-x-2">
-          <Clock className="h-4 w-4 text-blue-400" />
-          <span className="text-lg font-semibold text-white">Avg: {avgDuration}</span>
+          <Clock className="h-4 w-4 text-green-400" />
+          <span className="text-[clamp(0.875rem,2vw,1.125rem)] font-semibold text-white">Avg: {avgDuration}</span>
         </div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={durationData}>
             <XAxis 
@@ -65,7 +65,7 @@ const CallDurationWidget = ({ metrics, isLoading }: CallDurationWidgetProps) => 
             />
             <Bar 
               dataKey="seconds" 
-              fill="#3b82f6" 
+              fill="#22c55e" 
               radius={[2, 2, 0, 0]}
               opacity={0.8}
             />

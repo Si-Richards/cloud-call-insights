@@ -2,6 +2,7 @@ import React from 'react';
 import { Timer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDuration } from '@/lib/formatTime';
+import { statusColors, getHoldTimeStatus } from '@/lib/thresholds';
 import type { MetricsResponse } from '@/services/api';
 
 interface HoldTimeWidgetProps {
@@ -31,24 +32,27 @@ const HoldTimeWidget = ({ metrics, isLoading }: HoldTimeWidgetProps) => {
   const avgTalk = formatDuration(metrics?.average_talk_total ?? 0);
   const abandoned = metrics?.abandoned_total ?? 0;
 
+  const status = getHoldTimeStatus(metrics);
+  const colors = statusColors[status];
+
   return (
     <div className="h-full flex flex-col justify-between">
       <div className="grid grid-cols-2 gap-3">
         <div className="text-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-orange-500/20 rounded-lg mb-2 mx-auto">
-            <Timer className="h-4 w-4 text-orange-400" />
+          <div className={`flex items-center justify-center w-[clamp(1.5rem,4vw,2.5rem)] h-[clamp(1.5rem,4vw,2.5rem)] ${colors.bg} rounded-lg mb-2 mx-auto`}>
+            <Timer className={`h-[clamp(0.75rem,2vw,1.25rem)] w-[clamp(0.75rem,2vw,1.25rem)] ${colors.icon}`} />
           </div>
-          <div className="text-xl font-bold text-white">{avgHold}</div>
-          <div className="text-xs text-slate-400">Avg Hold</div>
+          <div className="text-[clamp(1rem,3vw,1.5rem)] font-bold text-white leading-tight">{avgHold}</div>
+          <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Avg Hold</div>
         </div>
         <div className="text-center">
-          <div className="text-xl font-bold text-white">{avgTalk}</div>
-          <div className="text-xs text-slate-400">Avg Talk</div>
+          <div className="text-[clamp(1rem,3vw,1.5rem)] font-bold text-white leading-tight">{avgTalk}</div>
+          <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Avg Talk</div>
         </div>
       </div>
       <div className="text-center">
-        <div className="text-2xl font-bold text-orange-400 mb-1">{abandoned}</div>
-        <div className="text-xs text-slate-400">Abandoned calls</div>
+        <div className="text-[clamp(1.25rem,3vw,1.75rem)] font-bold text-orange-400 mb-1">{abandoned}</div>
+        <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Abandoned calls</div>
         {!metrics && <div className="text-xs text-slate-500 mt-1">No live data</div>}
       </div>
     </div>

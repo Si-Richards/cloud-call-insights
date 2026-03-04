@@ -10,7 +10,6 @@ export interface WidgetRegistryEntry {
   icon: React.ReactNode;
   defaultW: number;
   defaultH: number;
-  /** If true, widget is only available when a seat is selected */
   requiresSeat?: boolean;
 }
 
@@ -77,7 +76,7 @@ const WidgetCatalog = ({ activeWidgetIds, onAddWidget, selectedSeat }: WidgetCat
               onClick={() => onAddWidget(widget.id)}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors text-left"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 shrink-0">
                 {widget.icon}
               </div>
               <div className="min-w-0">

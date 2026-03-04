@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { statusColors, getASRStatus } from '@/lib/thresholds';
 import type { MetricsResponse } from '@/services/api';
 
 interface ASRWidgetProps {
@@ -31,14 +31,18 @@ const ASRWidget = ({ metrics, isLoading }: ASRWidgetProps) => {
   const target = 90.0;
   const percentage = (asr / target) * 100;
 
+  const status = getASRStatus(metrics);
+  const colors = statusColors[status];
+  const ringColor = status === 'healthy' ? 'text-green-400' : status === 'warning' ? 'text-amber-400' : 'text-red-400';
+
   return (
     <div className="h-full flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="text-3xl font-bold text-white">{asr.toFixed(1)}%</div>
-          <div className="text-sm text-slate-400">Answer Success Rate</div>
+          <div className="text-[clamp(1.25rem,4vw,2rem)] font-bold text-white leading-tight">{asr.toFixed(1)}%</div>
+          <div className="text-[clamp(0.65rem,1.5vw,0.875rem)] text-slate-400">Answer Success Rate</div>
         </div>
-        <div className="w-16 h-16 relative">
+        <div className="w-[clamp(3rem,8vw,4.5rem)] h-[clamp(3rem,8vw,4.5rem)] relative shrink-0">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
             <path
               className="text-slate-700"
@@ -48,7 +52,7 @@ const ASRWidget = ({ metrics, isLoading }: ASRWidgetProps) => {
               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
             />
             <path
-              className="text-blue-400"
+              className={ringColor}
               stroke="currentColor"
               strokeWidth="3"
               strokeDasharray={`${Math.min(percentage, 100)}, 100`}
@@ -59,7 +63,7 @@ const ASRWidget = ({ metrics, isLoading }: ASRWidgetProps) => {
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-slate-400 text-sm">Target: {target}%</span>
+        <span className="text-slate-400 text-[clamp(0.65rem,1.5vw,0.875rem)]">Target: {target}%</span>
         {!metrics && <span className="text-slate-500 text-xs">No live data</span>}
       </div>
     </div>

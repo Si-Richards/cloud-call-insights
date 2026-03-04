@@ -2,6 +2,7 @@
 import React from 'react';
 import { Phone, PhoneCall, PhoneMissed } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { statusColors, getCallVolumeStatus } from '@/lib/thresholds';
 import type { MetricsResponse } from '@/services/api';
 
 interface CallVolumeWidgetProps {
@@ -22,7 +23,6 @@ const CallVolumeWidget = ({ metrics, isLoading }: CallVolumeWidgetProps) => {
             </div>
           ))}
         </div>
-        <Skeleton className="h-4 w-32 mx-auto bg-slate-700" />
       </div>
     );
   }
@@ -33,33 +33,36 @@ const CallVolumeWidget = ({ metrics, isLoading }: CallVolumeWidgetProps) => {
     missed: metrics?.unanswered_total ?? 0,
   };
 
+  const status = getCallVolumeStatus(metrics);
+  const colors = statusColors[status];
+
   return (
-    <div className="h-full flex flex-col justify-between">
+    <div className="h-full flex flex-col justify-center">
       <div className="grid grid-cols-3 gap-3">
         <div className="text-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-blue-500/20 rounded-lg mb-2 mx-auto">
-            <Phone className="h-4 w-4 text-blue-400" />
+          <div className={`flex items-center justify-center w-[clamp(1.5rem,4vw,2.5rem)] h-[clamp(1.5rem,4vw,2.5rem)] ${colors.bg} rounded-lg mb-2 mx-auto`}>
+            <Phone className={`h-[clamp(0.75rem,2vw,1.25rem)] w-[clamp(0.75rem,2vw,1.25rem)] ${colors.icon}`} />
           </div>
-          <div className="text-2xl font-bold text-white">{callData.total.toLocaleString()}</div>
-          <div className="text-xs text-slate-400">Total</div>
+          <div className="text-[clamp(1rem,3vw,1.75rem)] font-bold text-white leading-tight">{callData.total.toLocaleString()}</div>
+          <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Total</div>
         </div>
         <div className="text-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-green-500/20 rounded-lg mb-2 mx-auto">
-            <PhoneCall className="h-4 w-4 text-green-400" />
+          <div className="flex items-center justify-center w-[clamp(1.5rem,4vw,2.5rem)] h-[clamp(1.5rem,4vw,2.5rem)] bg-green-500/20 rounded-lg mb-2 mx-auto">
+            <PhoneCall className="h-[clamp(0.75rem,2vw,1.25rem)] w-[clamp(0.75rem,2vw,1.25rem)] text-green-400" />
           </div>
-          <div className="text-2xl font-bold text-white">{callData.answered.toLocaleString()}</div>
-          <div className="text-xs text-slate-400">Answered</div>
+          <div className="text-[clamp(1rem,3vw,1.75rem)] font-bold text-white leading-tight">{callData.answered.toLocaleString()}</div>
+          <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Answered</div>
         </div>
         <div className="text-center">
-          <div className="flex items-center justify-center w-8 h-8 bg-red-500/20 rounded-lg mb-2 mx-auto">
-            <PhoneMissed className="h-4 w-4 text-red-400" />
+          <div className="flex items-center justify-center w-[clamp(1.5rem,4vw,2.5rem)] h-[clamp(1.5rem,4vw,2.5rem)] bg-green-500/20 rounded-lg mb-2 mx-auto">
+            <PhoneMissed className="h-[clamp(0.75rem,2vw,1.25rem)] w-[clamp(0.75rem,2vw,1.25rem)] text-green-400" />
           </div>
-          <div className="text-2xl font-bold text-white">{callData.missed}</div>
-          <div className="text-xs text-slate-400">Missed</div>
+          <div className="text-[clamp(1rem,3vw,1.75rem)] font-bold text-white leading-tight">{callData.missed}</div>
+          <div className="text-[clamp(0.6rem,1.5vw,0.75rem)] text-slate-400">Missed</div>
         </div>
       </div>
       {!metrics && (
-        <div className="text-center text-xs text-slate-500">Configure API to see live data</div>
+        <div className="text-center text-xs text-slate-500 mt-2">Configure API to see live data</div>
       )}
     </div>
   );

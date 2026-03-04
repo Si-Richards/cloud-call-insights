@@ -22,8 +22,8 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
 
   const ringData = [
     { name: 'Inbound', value: metrics?.average_ring_inbound ?? 0, color: '#10b981' },
-    { name: 'Outbound', value: metrics?.average_ring_outbound ?? 0, color: '#3b82f6' },
-    { name: 'Internal', value: metrics?.average_ring_internal ?? 0, color: '#f59e0b' },
+    { name: 'Outbound', value: metrics?.average_ring_outbound ?? 0, color: '#22c55e' },
+    { name: 'Internal', value: metrics?.average_ring_internal ?? 0, color: '#4ade80' },
   ].filter(d => d.value > 0);
 
   if (ringData.length === 0) {
@@ -34,22 +34,22 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="text-center mb-3">
-        <div className="flex items-center justify-center space-x-2 mb-2">
-          <Phone className="h-4 w-4 text-blue-400" />
-          <span className="text-sm text-slate-400">Average Ring Time</span>
+      <div className="text-center mb-2 shrink-0">
+        <div className="flex items-center justify-center space-x-2 mb-1">
+          <Phone className="h-4 w-4 text-green-400" />
+          <span className="text-[clamp(0.65rem,1.5vw,0.875rem)] text-slate-400">Average Ring Time</span>
         </div>
-        <div className="text-2xl font-bold text-white">{avgRingTime}</div>
+        <div className="text-[clamp(1.25rem,3vw,1.75rem)] font-bold text-white leading-tight">{avgRingTime}</div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={ringData}
               cx="50%"
               cy="50%"
-              innerRadius={20}
-              outerRadius={60}
+              innerRadius="30%"
+              outerRadius="70%"
               paddingAngle={2}
               dataKey="value"
             >
@@ -71,15 +71,15 @@ const RingTimeWidget = ({ metrics, isLoading }: RingTimeWidgetProps) => {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-3 gap-1 text-xs">
+      <div className="grid grid-cols-3 gap-1 text-[clamp(0.55rem,1.2vw,0.75rem)] shrink-0">
         {[
-          { name: 'Inbound', color: '#10b981', value: metrics?.average_ring_inbound ?? 0 },
-          { name: 'Outbound', color: '#3b82f6', value: metrics?.average_ring_outbound ?? 0 },
-          { name: 'Internal', color: '#f59e0b', value: metrics?.average_ring_internal ?? 0 },
+          { name: 'In', color: '#10b981', value: metrics?.average_ring_inbound ?? 0 },
+          { name: 'Out', color: '#22c55e', value: metrics?.average_ring_outbound ?? 0 },
+          { name: 'Int', color: '#4ade80', value: metrics?.average_ring_internal ?? 0 },
         ].map((item, index) => (
           <div key={index} className="flex items-center space-x-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="text-slate-400">{item.name}: {formatDuration(item.value)}</span>
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            <span className="text-slate-400 truncate">{item.name}: {formatDuration(item.value)}</span>
           </div>
         ))}
       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { statusColors, getAbandonedStatus } from '@/lib/thresholds';
 import type { MetricsResponse } from '@/services/api';
 
 interface AbandonedCallsWidgetProps {
@@ -17,23 +18,28 @@ const AbandonedCallsWidget = ({ metrics, isLoading }: AbandonedCallsWidgetProps)
   }
 
   const segments = [
-    { label: 'Inbound', value: metrics?.abandoned_inbound ?? 0, color: '#f43f5e' },
-    { label: 'Outbound', value: metrics?.abandoned_outbound ?? 0, color: '#a855f7' },
-    { label: 'Internal', value: metrics?.abandoned_internal ?? 0, color: '#6366f1' },
+    { label: 'Inbound', value: metrics?.abandoned_inbound ?? 0, color: '#22c55e' },
+    { label: 'Outbound', value: metrics?.abandoned_outbound ?? 0, color: '#4ade80' },
+    { label: 'Internal', value: metrics?.abandoned_internal ?? 0, color: '#86efac' },
   ];
 
   const total = metrics?.abandoned_total ?? 0;
-  const sum = segments.reduce((a, s) => a + s.value, 0) || 1;
+  const status = getAbandonedStatus(metrics);
 
+  const donutSegments = total > 0 && status !== 'healthy'
+    ? segments.map(s => ({ ...s, color: status === 'critical' ? '#ef4444' : '#f59e0b' }))
+    : segments;
+
+  const sum = segments.reduce((a, s) => a + s.value, 0) || 1;
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
     <div className="h-full flex items-center gap-4">
-      <div className="relative shrink-0">
-        <svg width="100" height="100" viewBox="0 0 100 100">
-          {segments.map((seg) => {
+      <div className="relative shrink-0" style={{ width: 'clamp(60px, 30%, 100px)', aspectRatio: '1' }}>
+        <svg width="100%" height="100%" viewBox="0 0 100 100">
+          {donutSegments.map((seg) => {
             const dash = (seg.value / sum) * circumference;
             const currentOffset = offset;
             offset += dash;
@@ -56,15 +62,15 @@ const AbandonedCallsWidget = ({ metrics, isLoading }: AbandonedCallsWidgetProps)
           )}
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold text-white">{total}</span>
+          <span className="text-[clamp(0.875rem,2.5vw,1.25rem)] font-bold text-white">{total}</span>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 min-w-0">
         {segments.map((seg) => (
           <div key={seg.label} className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-            <span className="text-xs text-slate-400">{seg.label}</span>
-            <span className="text-xs font-semibold text-white ml-auto">{seg.value}</span>
+            <span className="text-[clamp(0.6rem,1.2vw,0.75rem)] text-slate-400">{seg.label}</span>
+            <span className="text-[clamp(0.6rem,1.2vw,0.75rem)] font-semibold text-white ml-auto">{seg.value}</span>
           </div>
         ))}
       </div>
