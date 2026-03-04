@@ -102,10 +102,13 @@ export interface MetricsResponse {
 
 // --- API Functions ---
 
+const CORS_PROXY = 'https://corsproxy.io/?';
+
 const apiFetch = async <T>(path: string, config?: ApiConfig): Promise<T> => {
   const cfg = config || getApiConfig();
   if (!cfg) throw new Error('API not configured');
-  const url = `${cfg.baseUrl.replace(/\/$/, '')}${path}`;
+  const targetUrl = `${cfg.baseUrl.replace(/\/$/, '')}${path}`;
+  const url = `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
