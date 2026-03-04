@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getApiConfig, saveApiConfig, getAbout, type ApiConfig } from '@/services/api';
+import { getApiConfig, saveApiConfig, getAbout, type ApiConfig, getPollInterval } from '@/services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQueryClient } from '@tanstack/react-query';
 
 const SettingsModal = () => {
@@ -13,6 +14,7 @@ const SettingsModal = () => {
   const [baseUrl, setBaseUrl] = useState('https://callstats.voicehost.io/rest/v1');
   const [accountNo, setAccountNo] = useState('');
   const [seatId, setSeatId] = useState('');
+  const [pollInterval, setPollInterval] = useState(30000);
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
 
@@ -23,6 +25,7 @@ const SettingsModal = () => {
         setBaseUrl(cfg.baseUrl);
         setAccountNo(cfg.accountNo);
         setSeatId(cfg.seatId || '');
+        setPollInterval(cfg.pollInterval ?? 30000);
       }
     }
   }, [open]);
@@ -49,6 +52,7 @@ const SettingsModal = () => {
       baseUrl: baseUrl.replace(/\/$/, ''),
       accountNo,
       seatId: seatId || undefined,
+      pollInterval,
     };
     saveApiConfig(config);
     queryClient.invalidateQueries({ queryKey: ['cse'] });
@@ -95,6 +99,20 @@ const SettingsModal = () => {
               className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
             />
             <p className="text-xs text-slate-500">Leave empty for account-wide metrics</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-slate-300">Refresh Interval</Label>
+            <Select value={String(pollInterval)} onValueChange={(v) => setPollInterval(Number(v))}>
+              <SelectTrigger className="bg-slate-900 border-slate-600 text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="10000" className="text-slate-200 focus:bg-slate-700 focus:text-white">10 seconds</SelectItem>
+                <SelectItem value="30000" className="text-slate-200 focus:bg-slate-700 focus:text-white">30 seconds</SelectItem>
+                <SelectItem value="60000" className="text-slate-200 focus:bg-slate-700 focus:text-white">1 minute</SelectItem>
+                <SelectItem value="120000" className="text-slate-200 focus:bg-slate-700 focus:text-white">2 minutes</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {testStatus !== 'idle' && (

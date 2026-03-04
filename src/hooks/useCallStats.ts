@@ -7,9 +7,8 @@ import {
   getChannelsBySeat,
   getPresence,
   getApiConfig,
+  getPollInterval,
 } from '@/services/api';
-
-const POLL_INTERVAL = 30_000; // 30 seconds
 
 const isConfigured = () => !!getApiConfig();
 const getConfig = () => getApiConfig()!;
@@ -19,7 +18,7 @@ export const useAbout = () =>
     queryKey: ['cse', 'about'],
     queryFn: () => getAbout(),
     enabled: isConfigured(),
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const useAccountMetrics = () =>
@@ -30,7 +29,7 @@ export const useAccountMetrics = () =>
       return getAccountMetrics(cfg.accountNo);
     },
     enabled: isConfigured() && !!getApiConfig()?.accountNo,
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const useSeatMetrics = (seatId?: string) =>
@@ -41,7 +40,7 @@ export const useSeatMetrics = (seatId?: string) =>
       return getSeatMetrics(cfg.accountNo, seatId!);
     },
     enabled: isConfigured() && !!seatId && !!getApiConfig()?.accountNo,
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const useChannels = () =>
@@ -49,7 +48,7 @@ export const useChannels = () =>
     queryKey: ['cse', 'channels'],
     queryFn: () => getChannels(),
     enabled: isConfigured(),
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const useSeatChannels = (seatId?: string) =>
@@ -57,7 +56,7 @@ export const useSeatChannels = (seatId?: string) =>
     queryKey: ['cse', 'channels', seatId],
     queryFn: () => getChannelsBySeat(seatId!),
     enabled: isConfigured() && !!seatId,
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const usePresence = (seatId?: string) =>
@@ -65,7 +64,7 @@ export const usePresence = (seatId?: string) =>
     queryKey: ['cse', 'presence', seatId],
     queryFn: () => getPresence(seatId!),
     enabled: isConfigured() && !!seatId,
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: getPollInterval(),
   });
 
 export const useMetrics = (seatId?: string) => {

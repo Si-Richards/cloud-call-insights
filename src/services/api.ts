@@ -6,7 +6,13 @@ export interface ApiConfig {
   baseUrl: string;
   accountNo: string;
   seatId?: string;
+  pollInterval?: number;
 }
+
+export const getPollInterval = (): number => {
+  const cfg = getApiConfig();
+  return cfg?.pollInterval ?? 30_000;
+};
 
 export const getApiConfig = (): ApiConfig | null => {
   const raw = localStorage.getItem(CONFIG_KEY);
