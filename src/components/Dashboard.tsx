@@ -258,28 +258,27 @@ const Dashboard = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <h3 className="font-semibold text-white text-sm truncate">{getWidgetTitle(instance.widgetType)}</h3>
                     {isEditMode ? (
-                      <Select
-                        value={instance.seatId ?? 'account'}
-                        onValueChange={(val) => handleSeatChange(instance.instanceId, val)}
-                      >
-                        <SelectTrigger className="h-6 w-auto min-w-[90px] max-w-[130px] text-xs bg-slate-700/50 border-slate-600 text-slate-300 px-2 py-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="account" className="text-slate-200 text-xs focus:bg-slate-700 focus:text-white">
-                            Account
-                          </SelectItem>
-                          {seatsList?.seats?.map((seat: any) => (
-                            <SelectItem
-                              key={seat.id}
-                              value={seat.id}
-                              className="text-slate-200 text-xs focus:bg-slate-700 focus:text-white"
-                            >
-                              Seat {seat.id}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        type="number"
+                        min={200}
+                        max={998}
+                        placeholder="Ext (200-998)"
+                        value={instance.seatId ?? ''}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            handleSeatChange(instance.instanceId, 'account');
+                            return;
+                          }
+                          const num = parseInt(val, 10);
+                          if (!isNaN(num) && num >= 200 && num <= 998) {
+                            handleSeatChange(instance.instanceId, String(num));
+                          }
+                        }}
+                        className="h-6 w-[100px] text-xs bg-slate-700/50 border-slate-600 text-slate-300 px-2 py-0"
+                      />
                     ) : (
                       <span className="text-[10px] text-slate-500 shrink-0">
                         {getSeatLabel(instance.seatId)}
