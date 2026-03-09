@@ -1,34 +1,67 @@
 
 
-## Plan: Dashboard Polish and UX Improvements
+## Plan: Per-Widget Data Source Selection
 
-After reviewing all widgets and the dashboard, here are the improvements worth making:
+### Problem
+Currently there's a single global seat selector in the header. All widgets share the same data source. Users want to:
+1. Choose per-widget whether it shows account or a specific seat's data
+2. Add the same widget type multiple times with different data sources (e.g., two Call Volume widgets — one for account, one for Seat 201)
 
-### 1. Connection Status Indicator
-Add a small status badge in the header showing whether the API is connected and when data was last refreshed. Currently there's no visual feedback unless you open the settings modal.
+### Key Architecture Change
+Instead of storing active widgets as simple string IDs (`['call-volume', 'asr']`), switch to **widget instances** with unique instance IDs and a per-widget `seatId` config.
 
-### 2. Auto-refresh Countdown & Last Updated Timestamp
-Show "Last updated: 12s ago" near the header so users know the data is live. Optionally show a subtle refresh indicator when polling fires.
+```text
+Before: activeWidgets = ['call-volume', 'asr']
+After:  activeWidgets = [
+          { instanceId: 'call-volume-1', widgetType: 'call-volume', seatId: undefined },
+          { instanceId: 'call-volume-2', widgetType: 'call-volume', seatId: '201' },
+          { instanceId: 'asr-1', widgetType: 'asr', seatId: '205' },
+        ]
+```
 
-### 3. "No Data" Empty State Improvement
-When the API isn't configured, currently each widget shows its own variant of "no data." Instead, show a single prominent banner/overlay encouraging the user to configure the API, rather than 7+ individual messages.
+### Changes
 
-### 4. Configurable Polling Interval
-Add a dropdown in the Settings Modal to let users choose refresh rate (10s, 30s, 60s, 2min). Store in localStorage alongside the API config.
+**1. Widget Instance Model**
+- Define a `WidgetInstance` type: `{ instanceId: string, widgetType: string, seatId?: string }`
+- Update `loadActiveWidgets` / `saveActiveWidgets` in `WidgetCatalog.tsx` to handle this format (with migration from old format)
+- Widget catalog now allows adding the same widget type multiple times
 
-### 5. Widget Tooltip Improvements
-Several chart widgets (Call Duration, Hold Time, Talk Time, Ring Time) use Recharts tooltips with inconsistent styling. Standardize tooltip format and ensure all show proper units.
+**2. Per-Widget Seat Selector**
+- Each widget's header bar gets a small seat/account dropdown (visible in edit mode, or always as a subtle label)
+- In edit mode: full dropdown to change the data source
+- In view mode: show a small label like "Account" or "Seat 201" in the widget header
 
-### 6. Dark Mode Refinements
-- The "Edit Layout" button always shows blue styling even when not in edit mode — make it properly outlined when inactive
-- Improve contrast on some subtle text elements
+**3. Per-Widget Data Fetching**
+- Each widget that needs metrics will receive its own `seatId` prop
+- Widgets internally call `useMetrics(seatId)` or the Dashboard passes the right metrics
+- Since react-query deduplicates by key, multiple widgets for the same seat won't cause extra API calls
+
+**4. Remove Global Seat Selector**
+- The header seat dropdown is removed since each widget now controls its own data source
+
+**5. Dashboard.tsx Changes**
+- `activeWidgetIds: string[]` → `widgetInstances: WidgetInstance[]`
+- `renderWidget(id)` → `renderWidget(instance)` — passes instance-specific `seatId`
+- Layout keys use `instanceId` instead of widget type
+- Add/remove logic generates unique instance IDs (e.g., `${widgetType}-${Date.now()}`)
+- Each widget header shows a seat selector dropdown in edit mode
+
+**6. Widget Catalog Changes**
+- No longer filters out already-active widgets (same type can be added multiple times)
+- On add, prompts or defaults to "Account" and lets user change later
+
+**7. Activity Feed & Presence Widgets**
+- Activity feed uses `useSeatChannels(seatId)` per instance
+- Presence widget uses its instance's `seatId` (still requires a seat)
 
 ### Files to Modify
 
 | File | Changes |
 |---|---|
-| `src/components/Dashboard.tsx` | Add connection status indicator, last-updated timestamp, improve edit button styling, add unconfigured banner |
-| `src/components/SettingsModal.tsx` | Add polling interval selector |
-| `src/hooks/useCallStats.ts` | Read polling interval from config |
-| `src/services/api.ts` | Add `pollInterval` to `ApiConfig` type |
+| `src/components/WidgetCatalog.tsx` | Add `WidgetInstance` type, update persistence with migration, allow duplicate widget types |
+| `src/components/Dashboard.tsx` | Switch from `string[]` to `WidgetInstance[]`, per-widget seat selector in header, remove global seat dropdown, update render/add/remove logic |
+| `src/hooks/useCallStats.ts` | No changes needed — hooks already accept optional `seatId` |
+
+### Migration
+When loading from localStorage, if the old format (string array) is detected, convert each ID to a `WidgetInstance` with `seatId: undefined` (account-level).
 
