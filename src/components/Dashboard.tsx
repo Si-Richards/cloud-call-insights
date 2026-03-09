@@ -290,7 +290,12 @@ const Dashboard = () => {
                     {isEditMode && (
                       <>
                         <button
-                          onClick={() => handleRemoveWidget(instance.instanceId)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveWidget(instance.instanceId);
+                          }}
                           className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center hover:bg-red-500/40 transition-colors"
                         >
                           <X className="w-3 h-3 text-red-400" />
