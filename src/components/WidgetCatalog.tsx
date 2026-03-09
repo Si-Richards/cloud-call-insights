@@ -13,6 +13,12 @@ export interface WidgetRegistryEntry {
   requiresSeat?: boolean;
 }
 
+export interface WidgetInstance {
+  instanceId: string;
+  widgetType: string;
+  seatId?: string; // undefined = account-level
+}
+
 export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
   { id: 'call-volume', title: 'Call Volume', description: 'Total, answered, and missed calls', icon: <Phone className="h-4 w-4" />, defaultW: 3, defaultH: 2 },
   { id: 'asr', title: 'Answer Success Rate', description: 'Percentage of answered calls', icon: <Activity className="h-4 w-4" />, defaultW: 3, defaultH: 2 },
@@ -32,33 +38,46 @@ export const DEFAULT_WIDGET_IDS = [
   'call-volume', 'asr', 'call-duration', 'hold-time', 'queue-stats', 'ring-time', 'activity-feed',
 ];
 
-const STORAGE_KEY = 'dashboard-active-widgets';
+const STORAGE_KEY = 'dashboard-widget-instances';
+const LEGACY_STORAGE_KEY = 'dashboard-active-widgets';
 
-export const loadActiveWidgets = (): string[] => {
+export const loadWidgetInstances = (): WidgetInstance[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
+    // Migrate from legacy format
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      const ids: string[] = JSON.parse(legacy);
+      const instances = ids.map((id) => ({
+        instanceId: `${id}-1`,
+        widgetType: id,
+        seatId: undefined,
+      }));
+      saveWidgetInstances(instances);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return instances;
+    }
   } catch {}
-  return DEFAULT_WIDGET_IDS;
+  return DEFAULT_WIDGET_IDS.map((id) => ({
+    instanceId: `${id}-1`,
+    widgetType: id,
+    seatId: undefined,
+  }));
 };
 
-export const saveActiveWidgets = (ids: string[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+export const saveWidgetInstances = (instances: WidgetInstance[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(instances));
 };
+
+export const generateInstanceId = (widgetType: string): string =>
+  `${widgetType}-${Date.now()}`;
 
 interface WidgetCatalogProps {
-  activeWidgetIds: string[];
-  onAddWidget: (id: string) => void;
-  selectedSeat?: string;
+  onAddWidget: (widgetType: string) => void;
 }
 
-const WidgetCatalog = ({ activeWidgetIds, onAddWidget, selectedSeat }: WidgetCatalogProps) => {
-  const available = WIDGET_REGISTRY.filter(
-    (w) => !activeWidgetIds.includes(w.id) && (!w.requiresSeat || !!selectedSeat)
-  );
-
-  if (available.length === 0) return null;
-
+const WidgetCatalog = ({ onAddWidget }: WidgetCatalogProps) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -70,7 +89,7 @@ const WidgetCatalog = ({ activeWidgetIds, onAddWidget, selectedSeat }: WidgetCat
       <PopoverContent className="w-80 bg-slate-800 border-slate-700 p-2" align="end">
         <div className="text-sm font-semibold text-white mb-2 px-2">Available Widgets</div>
         <div className="max-h-64 overflow-y-auto space-y-1">
-          {available.map((widget) => (
+          {WIDGET_REGISTRY.map((widget) => (
             <button
               key={widget.id}
               onClick={() => onAddWidget(widget.id)}
