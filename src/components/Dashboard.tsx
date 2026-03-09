@@ -1,7 +1,6 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Settings, Users, X, AlertCircle, Pencil } from 'lucide-react';
+import { Settings, X, AlertCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +18,13 @@ import CallDistributionWidget from './widgets/CallDistributionWidget';
 import PresenceWidget from './widgets/PresenceWidget';
 import SettingsModal from './SettingsModal';
 import ConnectionStatus from './ConnectionStatus';
-import WidgetCatalog, { WIDGET_REGISTRY, loadActiveWidgets, saveActiveWidgets } from './WidgetCatalog';
+import WidgetCatalog, {
+  WIDGET_REGISTRY,
+  loadWidgetInstances,
+  saveWidgetInstances,
+  generateInstanceId,
+  type WidgetInstance,
+} from './WidgetCatalog';
 import { useMetrics, useChannels, useSeatChannels } from '@/hooks/useCallStats';
 import { getApiConfig } from '@/services/api';
 import 'react-grid-layout/css/styles.css';
@@ -30,14 +35,14 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 const LAYOUTS_STORAGE_KEY = 'dashboard-layouts';
 const TITLE_STORAGE_KEY = 'dashboard-title';
 
-const loadLayouts = (activeIds: string[]): Record<string, any[]> => {
+const loadLayouts = (instanceIds: string[]): Record<string, any[]> => {
   try {
     const raw = localStorage.getItem(LAYOUTS_STORAGE_KEY);
     if (raw) {
       const saved = JSON.parse(raw);
       const filtered: Record<string, any[]> = {};
       for (const [bp, items] of Object.entries(saved)) {
-        filtered[bp] = (items as any[]).filter((item: any) => activeIds.includes(item.i));
+        filtered[bp] = (items as any[]).filter((item: any) => instanceIds.includes(item.i));
       }
       return filtered;
     }
@@ -45,10 +50,37 @@ const loadLayouts = (activeIds: string[]): Record<string, any[]> => {
   return {};
 };
 
+// Per-widget metrics wrapper component
+const WidgetWithMetrics = ({
+  instance,
+  seatsList,
+}: {
+  instance: WidgetInstance;
+  seatsList: any;
+}) => {
+  const { data: metrics, isLoading } = useMetrics(instance.seatId);
+  const { data: channelsData } = useSeatChannels(instance.seatId);
+
+  switch (instance.widgetType) {
+    case 'call-volume': return <CallVolumeWidget metrics={metrics} isLoading={isLoading} />;
+    case 'asr': return <ASRWidget metrics={metrics} isLoading={isLoading} />;
+    case 'call-duration': return <CallDurationWidget metrics={metrics} isLoading={isLoading} />;
+    case 'hold-time': return <HoldTimeWidget metrics={metrics} isLoading={isLoading} />;
+    case 'queue-stats': return <QueueStatsWidget metrics={metrics} isLoading={isLoading} />;
+    case 'ring-time': return <RingTimeWidget metrics={metrics} isLoading={isLoading} />;
+    case 'activity-feed': return <ActivityFeedWidget channels={channelsData?.channels} isLoading={isLoading} />;
+    case 'talk-time': return <TalkTimeWidget metrics={metrics} isLoading={isLoading} />;
+    case 'unanswered-calls': return <UnansweredCallsWidget metrics={metrics} isLoading={isLoading} />;
+    case 'abandoned-calls': return <AbandonedCallsWidget metrics={metrics} isLoading={isLoading} />;
+    case 'call-distribution': return <CallDistributionWidget metrics={metrics} isLoading={isLoading} />;
+    case 'presence': return <PresenceWidget seatId={instance.seatId} isLoading={isLoading} />;
+    default: return null;
+  }
+};
+
 const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedSeat, setSelectedSeat] = useState<string | undefined>(undefined);
-  const [activeWidgetIds, setActiveWidgetIds] = useState<string[]>(loadActiveWidgets);
+  const [widgetInstances, setWidgetInstances] = useState<WidgetInstance[]>(loadWidgetInstances);
 
   // Editable title
   const [title, setTitle] = useState(() => localStorage.getItem(TITLE_STORAGE_KEY) || 'Dashboard');
@@ -70,27 +102,26 @@ const Dashboard = () => {
   };
 
   const apiConfigured = !!getApiConfig();
-  const { data: metrics, isLoading } = useMetrics(selectedSeat);
   const { data: seatsList } = useChannels();
-  const { data: channelsData } = useSeatChannels(selectedSeat);
 
-  const buildDefaultLayout = useCallback((ids: string[]) => {
+  const buildDefaultLayout = useCallback((instances: WidgetInstance[]) => {
     let x = 0, y = 0;
-    return ids.map((id) => {
-      const reg = WIDGET_REGISTRY.find((w) => w.id === id);
+    return instances.map((inst) => {
+      const reg = WIDGET_REGISTRY.find((w) => w.id === inst.widgetType);
       const w = reg?.defaultW ?? 3;
       const h = reg?.defaultH ?? 2;
       if (x + w > 12) { x = 0; y += h; }
-      const item = { i: id, x, y, w, h };
+      const item = { i: inst.instanceId, x, y, w, h };
       x += w;
       return item;
     });
   }, []);
 
   const [layouts, setLayouts] = useState<Record<string, any[]>>(() => {
-    const saved = loadLayouts(activeWidgetIds);
+    const instanceIds = widgetInstances.map((i) => i.instanceId);
+    const saved = loadLayouts(instanceIds);
     if (saved.lg && saved.lg.length > 0) return saved;
-    return { lg: buildDefaultLayout(activeWidgetIds) };
+    return { lg: buildDefaultLayout(widgetInstances) };
   });
 
   const handleLayoutChange = (_layout: any, allLayouts: any) => {
@@ -98,54 +129,47 @@ const Dashboard = () => {
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(allLayouts));
   };
 
-  const handleSeatChange = (value: string) => {
-    setSelectedSeat(value === 'all' ? undefined : value);
-  };
+  const handleAddWidget = (widgetType: string) => {
+    const instanceId = generateInstanceId(widgetType);
+    const newInstance: WidgetInstance = { instanceId, widgetType, seatId: undefined };
+    const newInstances = [...widgetInstances, newInstance];
+    setWidgetInstances(newInstances);
+    saveWidgetInstances(newInstances);
 
-  const handleAddWidget = (id: string) => {
-    const newIds = [...activeWidgetIds, id];
-    setActiveWidgetIds(newIds);
-    saveActiveWidgets(newIds);
-    const reg = WIDGET_REGISTRY.find((w) => w.id === id)!;
+    const reg = WIDGET_REGISTRY.find((w) => w.id === widgetType)!;
     const currentLg = layouts.lg || [];
     const maxY = currentLg.reduce((max: number, item: any) => Math.max(max, item.y + item.h), 0);
-    const newLayout = { i: id, x: 0, y: maxY, w: reg.defaultW, h: reg.defaultH };
+    const newLayout = { i: instanceId, x: 0, y: maxY, w: reg.defaultW, h: reg.defaultH };
     const newLayouts = { ...layouts, lg: [...currentLg, newLayout] };
     setLayouts(newLayouts);
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(newLayouts));
   };
 
-  const handleRemoveWidget = (id: string) => {
-    const newIds = activeWidgetIds.filter((wid) => wid !== id);
-    setActiveWidgetIds(newIds);
-    saveActiveWidgets(newIds);
+  const handleRemoveWidget = (instanceId: string) => {
+    const newInstances = widgetInstances.filter((inst) => inst.instanceId !== instanceId);
+    setWidgetInstances(newInstances);
+    saveWidgetInstances(newInstances);
     const newLayouts: Record<string, any[]> = {};
     for (const [bp, items] of Object.entries(layouts)) {
-      newLayouts[bp] = (items as any[]).filter((item: any) => item.i !== id);
+      newLayouts[bp] = (items as any[]).filter((item: any) => item.i !== instanceId);
     }
     setLayouts(newLayouts);
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(newLayouts));
   };
 
-  const renderWidget = (id: string) => {
-    switch (id) {
-      case 'call-volume': return <CallVolumeWidget metrics={metrics} isLoading={isLoading} />;
-      case 'asr': return <ASRWidget metrics={metrics} isLoading={isLoading} />;
-      case 'call-duration': return <CallDurationWidget metrics={metrics} isLoading={isLoading} />;
-      case 'hold-time': return <HoldTimeWidget metrics={metrics} isLoading={isLoading} />;
-      case 'queue-stats': return <QueueStatsWidget metrics={metrics} isLoading={isLoading} />;
-      case 'ring-time': return <RingTimeWidget metrics={metrics} isLoading={isLoading} />;
-      case 'activity-feed': return <ActivityFeedWidget channels={channelsData?.channels} isLoading={isLoading} />;
-      case 'talk-time': return <TalkTimeWidget metrics={metrics} isLoading={isLoading} />;
-      case 'unanswered-calls': return <UnansweredCallsWidget metrics={metrics} isLoading={isLoading} />;
-      case 'abandoned-calls': return <AbandonedCallsWidget metrics={metrics} isLoading={isLoading} />;
-      case 'call-distribution': return <CallDistributionWidget metrics={metrics} isLoading={isLoading} />;
-      case 'presence': return <PresenceWidget seatId={selectedSeat} isLoading={isLoading} />;
-      default: return null;
-    }
+  const handleSeatChange = (instanceId: string, seatId: string) => {
+    const newInstances = widgetInstances.map((inst) =>
+      inst.instanceId === instanceId
+        ? { ...inst, seatId: seatId === 'account' ? undefined : seatId }
+        : inst
+    );
+    setWidgetInstances(newInstances);
+    saveWidgetInstances(newInstances);
   };
 
-  const getWidgetTitle = (id: string) => WIDGET_REGISTRY.find((w) => w.id === id)?.title ?? id;
+  const getWidgetTitle = (widgetType: string) => WIDGET_REGISTRY.find((w) => w.id === widgetType)?.title ?? widgetType;
+
+  const getSeatLabel = (seatId?: string) => seatId ? `Seat ${seatId}` : 'Account';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -176,33 +200,8 @@ const Dashboard = () => {
             <ConnectionStatus />
           </div>
           <div className="flex items-center space-x-3">
-            {/* Seat selector - always visible */}
-            <Select value={selectedSeat ?? 'all'} onValueChange={handleSeatChange}>
-              <SelectTrigger className="w-48 bg-slate-700/50 border-slate-600 text-slate-200">
-                <Users className="h-4 w-4 mr-2 text-slate-400" />
-                <SelectValue placeholder="All Seats" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="all" className="text-slate-200 focus:bg-slate-700 focus:text-white">
-                  All Seats (Account)
-                </SelectItem>
-                {seatsList?.seats?.map((seat) => (
-                  <SelectItem
-                    key={seat.id}
-                    value={seat.id}
-                    className="text-slate-200 focus:bg-slate-700 focus:text-white"
-                  >
-                    Seat {seat.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             {isEditMode && (
-              <WidgetCatalog
-                activeWidgetIds={activeWidgetIds}
-                onAddWidget={handleAddWidget}
-                selectedSeat={selectedSeat}
-              />
+              <WidgetCatalog onAddWidget={handleAddWidget} />
             )}
             <SettingsModal />
             <Button
@@ -247,21 +246,51 @@ const Dashboard = () => {
           containerPadding={[0, 0]}
           rowHeight={120}
         >
-          {activeWidgetIds.map((id) => (
+          {widgetInstances.map((instance) => (
             <div
-              key={id}
+              key={instance.instanceId}
               className={`bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden transition-all duration-200 ${
                 isEditMode ? 'ring-2 ring-blue-500/30 shadow-lg shadow-blue-500/10' : 'hover:shadow-lg hover:shadow-blue-500/5'
               }`}
             >
               <div className="h-full flex flex-col">
                 <div className="px-4 py-3 border-b border-slate-700/30 flex items-center justify-between shrink-0">
-                  <h3 className="font-semibold text-white text-sm">{getWidgetTitle(id)}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="font-semibold text-white text-sm truncate">{getWidgetTitle(instance.widgetType)}</h3>
+                    {isEditMode ? (
+                      <Select
+                        value={instance.seatId ?? 'account'}
+                        onValueChange={(val) => handleSeatChange(instance.instanceId, val)}
+                      >
+                        <SelectTrigger className="h-6 w-auto min-w-[90px] max-w-[130px] text-xs bg-slate-700/50 border-slate-600 text-slate-300 px-2 py-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700">
+                          <SelectItem value="account" className="text-slate-200 text-xs focus:bg-slate-700 focus:text-white">
+                            Account
+                          </SelectItem>
+                          {seatsList?.seats?.map((seat: any) => (
+                            <SelectItem
+                              key={seat.id}
+                              value={seat.id}
+                              className="text-slate-200 text-xs focus:bg-slate-700 focus:text-white"
+                            >
+                              Seat {seat.id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 shrink-0">
+                        {getSeatLabel(instance.seatId)}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1">
                     {isEditMode && (
                       <>
                         <button
-                          onClick={() => handleRemoveWidget(id)}
+                          onClick={() => handleRemoveWidget(instance.instanceId)}
                           className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center hover:bg-red-500/40 transition-colors"
                         >
                           <X className="w-3 h-3 text-red-400" />
@@ -278,7 +307,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex-1 p-4 overflow-hidden min-h-0">
-                  {renderWidget(id)}
+                  <WidgetWithMetrics instance={instance} seatsList={seatsList} />
                 </div>
               </div>
             </div>
